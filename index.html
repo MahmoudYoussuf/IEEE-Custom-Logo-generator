@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IEEE CS Logo Customizer</title>
+    <!-- Import Montserrat Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Import html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            font-family: 'Montserrat', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        /* Top Control Bar & Settings Panel */
+        .controls-container {
+            width: 100%;
+            background: #1e1e1e;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            z-index: 10;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            width: 100%;
+            max-width: 1050px;
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #333;
+        }
+
+        .settings-section-title {
+            grid-column: 1 / -1;
+            font-size: 14px;
+            font-weight: 700;
+            color: #F58025;
+            margin-bottom: -5px;
+            margin-top: 10px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+            text-transform: uppercase;
+        }
+        .settings-section-title:first-child { margin-top: 0; }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #222;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .input-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #ccc;
+        }
+
+        .text-input, .select-input {
+            background: #111;
+            border: 1px solid #444;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .select-input { cursor: pointer; }
+
+        .color-row, .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider-row { margin-top: 5px; }
+        .slider-row input[type="range"] { flex-grow: 1; accent-color: #F58025; }
+
+        .num-input {
+            width: 60px;
+            background: #111;
+            border: 1px solid #444;
+            color: white;
+            padding: 6px;
+            border-radius: 4px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        .color-hex {
+            flex-grow: 1;
+            background: #111;
+            border: 1px solid #444;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .color-picker {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            padding: 0;
+            background: transparent;
+        }
+
+        /* Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .btn {
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-upload { background-color: #3b82f6; position: relative; overflow: hidden; }
+        .btn-upload:hover { background-color: #2563eb; transform: translateY(-2px); }
+        .btn-upload input[type=file] { position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; width: 100%; }
+        
+        .btn-generate { background-color: #F58025; }
+        .btn-generate:hover { background-color: #d96b1a; transform: translateY(-2px); }
+
+        .btn-success { background-color: #10b981; width: 100%; max-width: 300px; padding: 15px; font-size: 16px; margin-top: 15px; }
+        .btn-success:hover { background-color: #059669; }
+
+        /* Canvas Area Container */
+        .canvas-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            width: 100%;
+        }
+
+        /* Scaler Wrapper: Handles mobile responsiveness without breaking the DOM structure */
+        .canvas-scaler {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.2s ease, margin 0.2s ease;
+        }
+
+        /* The circular profile picture */
+        .logo-canvas {
+            width: 600px;
+            height: 600px;
+            background-color: #ffffff; /* Solid white base so lowering opacity makes things lighter */
+            background-image: radial-gradient(circle at center, #1f2024 0%, #0d0e10 100%);
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* Layers inside the Canvas */
+        .watermark-img {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            opacity: 0.04;
+            pointer-events: none;
+            z-index: 1; /* Bottom Layer */
+            object-fit: cover;
+        }
+
+        .light-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 2; /* Middle Layer (above watermark, below text) */
+            background: radial-gradient(circle at 0% 0%, rgba(255,255,255,0.15) 0%, transparent 65%);
+        }
+
+        .content-wrapper {
+            z-index: 3; /* Top Layer */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: translateY(-5px);
+            --main-scale: 1;
+            --chap-scale: 1;
+        }
+
+        /* Layout Elements */
+        .ieee-lockup {
+            display: flex;
+            align-items: center;
+            gap: 28px; 
+            margin-bottom: 25px;
+        }
+
+        .logo-bug-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-container {
+            width: 130px;
+            height: 130px;
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(255,255,255,0.05);
+            border-radius: 50%;
+            border: 2px dashed rgba(255,255,255,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .icon-container span { font-size: 12px; color: rgba(255,255,255,0.5); text-align: center; padding: 10px; }
+        .icon-container img { width: 100%; height: 100%; object-fit: cover; display: none; position: absolute; top: 0; left: 0; }
+
+        .tm {
+            font-size: 16px;
+            font-weight: 700;
+            color: #F58025;
+            position: absolute;
+            bottom: 4px;
+            right: -10px; 
+            transition: right 0.1s; 
+        }
+
+        .divider-line {
+            width: 2px;
+            height: 110px;
+            background-color: rgba(255, 255, 255, 0.4);
+            border-radius: 2px;
+            transform: skewX(-10deg);
+            transition: 0.2s;
+        }
+
+        /* Typography */
+        .text-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            color: #ffffff;
+            padding-top: 5px; 
+            transition: 0.2s;
+        }
+
+        .text-ieee { font-size: calc(20px * var(--main-scale)); font-weight: 700; letter-spacing: 0.5px; line-height: 1; margin-bottom: 2px; }
+        .text-cs { font-size: calc(42px * var(--main-scale)); font-weight: 800; letter-spacing: -0.5px; line-height: 0.95; }
+        
+        .chapter-name {
+            font-size: calc(17.5px * var(--chap-scale));
+            font-weight: 600;
+            color: #ffffff;
+            text-align: center;
+            letter-spacing: 0.5px;
+            line-height: 1.4;
+            transition: 0.2s;
+        }
+
+        /* MODAL POPUPS & LOADING OVERLAY */
+        .modal, .loading-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.95); flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
+        .loading-overlay { z-index: 99999; }
+        .modal { z-index: 999999; }
+        .modal-content { display: flex; flex-direction: column; align-items: center; max-width: 100%; }
+
+        .modal-instructions { font-size: 22px; font-weight: bold; color: #ffffff; margin-bottom: 5px; text-align: center; }
+        .modal-subtext { font-size: 14px; color: #aaa; margin-bottom: 25px; text-align: center; }
+
+        #finalResultImage { width: 300px; height: 300px; border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.8); border: 2px solid rgba(255,255,255,0.2); object-fit: cover; }
+
+        .close-modal-btn { margin-top: 20px; background-color: transparent; border: 1px solid #555; color: #aaa; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .close-modal-btn:hover { background-color: rgba(255,255,255,0.1); color: white;}
+
+        .loader { border: 5px solid rgba(255,255,255,0.1); border-top: 5px solid #F58025; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Responsive scaling applied cleanly to the scaler wrapper */
+        @media (max-width: 650px) {
+            .canvas-scaler { transform: scale(0.55); margin: -100px 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Toolbar Controls -->
+    <div class="controls-container">
+        
+        <div class="settings-grid">
+            
+            <div class="settings-section-title">TEXT CONTENT & SIZING</div>
+            
+            <!-- Text Settings -->
+            <div class="input-group">
+                <label>University Name</label>
+                <input type="text" id="uniInput" class="text-input" value="Al-Ahliyya Amman University">
+            </div>
+            <div class="input-group">
+                <label>Chapter Type</label>
+                <input type="text" id="chapInput" class="text-input" value="Student Chapter">
+            </div>
+
+            <!-- Font Size Controls -->
+            <div class="input-group">
+                <label>Main Text Size (Multiplier)</label>
+                <div class="slider-row">
+                    <input type="range" id="mainTextSizeRange" min="0.5" max="1.5" step="0.05" value="1">
+                    <input type="number" id="mainTextSizeNum" class="num-input" min="0.5" max="1.5" step="0.05" value="1">
+                    <span style="font-size:12px; color:#aaa;">x</span>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Chapter Text Size (Multiplier)</label>
+                <div class="slider-row">
+                    <input type="range" id="chapTextSizeRange" min="0.5" max="1.5" step="0.05" value="1">
+                    <input type="number" id="chapTextSizeNum" class="num-input" min="0.5" max="1.5" step="0.05" value="1">
+                    <span style="font-size:12px; color:#aaa;">x</span>
+                </div>
+            </div>
+
+            <!-- Position Control for TM -->
+            <div class="input-group">
+                <label>™ Symbol Position (Left ↔ Right)</label>
+                <div class="slider-row">
+                    <input type="range" id="tmOffsetRange" min="-40" max="10" step="1" value="-10">
+                    <input type="number" id="tmOffsetNum" class="num-input" min="-40" max="10" step="1" value="-10">
+                    <span style="font-size:12px; color:#aaa;">px</span>
+                </div>
+            </div>
+
+            <div class="settings-section-title">WATERMARKS & LIGHTING</div>
+            
+            <!-- Watermark Pattern Selection -->
+            <div class="input-group">
+                <label>Background Watermark Pattern</label>
+                <select id="watermarkStyle" class="select-input">
+                    <option value="tech">Tech / Circuit</option>
+                    <option value="grid">Minimal Grid</option>
+                    <option value="dots">Dot Matrix</option>
+                    <option value="none">None (Clean Background)</option>
+                </select>
+            </div>
+
+            <!-- Watermark Opacity -->
+            <div class="input-group">
+                <label>Watermark Visibility (Opacity)</label>
+                <div class="slider-row">
+                    <input type="range" id="watermarkRange" min="0" max="100" step="1" value="4">
+                    <input type="number" id="watermarkNum" class="num-input" min="0" max="100" step="1" value="4">
+                    <span style="font-size:12px; color:#aaa;">%</span>
+                </div>
+            </div>
+
+            <!-- Lighting Direction -->
+            <div class="input-group">
+                <label>Directional Light Glow</label>
+                <select id="lightDirection" class="select-input">
+                    <option value="top-left">Top Left</option>
+                    <option value="top">Top Center</option>
+                    <option value="top-right">Top Right</option>
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                    <option value="bottom-left">Bottom Left</option>
+                    <option value="bottom">Bottom Center</option>
+                    <option value="bottom-right">Bottom Right</option>
+                    <option value="center">Center Glow</option>
+                    <option value="none">None</option>
+                </select>
+            </div>
+
+            <!-- Light Color & Intensity -->
+            <div class="input-group">
+                <label>Light Color & Intensity</label>
+                <div class="color-row">
+                    <input type="text" id="lightHex" class="color-hex" value="#ffffff">
+                    <input type="color" id="lightPicker" class="color-picker" value="#ffffff">
+                </div>
+                <div class="slider-row">
+                    <input type="range" id="lightOpacityRange" min="0" max="100" value="15">
+                    <input type="number" id="lightOpacityNum" class="num-input" min="0" max="100" value="15">
+                    <span style="font-size:12px; color:#aaa;">% brightness</span>
+                </div>
+            </div>
+
+            <div class="settings-section-title">COLORS & BACKGROUND</div>
+
+            <!-- Color Settings -->
+            <div class="input-group">
+                <label>Background Center (Spread & Lightness/Opacity)</label>
+                <div class="color-row">
+                    <input type="text" id="bg1Hex" class="color-hex" value="#1f2024">
+                    <input type="color" id="bg1Picker" class="color-picker" value="#1f2024">
+                </div>
+                <div class="slider-row">
+                    <input type="range" id="bg1Percent" min="0" max="100" value="0">
+                    <input type="number" id="bg1Num" class="num-input" min="0" max="100" value="0">
+                    <span style="font-size:12px; color:#aaa;">% spread</span>
+                </div>
+                <div class="slider-row">
+                    <input type="range" id="bg1Opacity" min="0" max="100" value="100">
+                    <input type="number" id="bg1OpacityNum" class="num-input" min="0" max="100" value="100">
+                    <span style="font-size:12px; color:#aaa;">% opacity</span>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Background Edge (Spread & Lightness/Opacity)</label>
+                <div class="color-row">
+                    <input type="text" id="bg2Hex" class="color-hex" value="#0d0e10">
+                    <input type="color" id="bg2Picker" class="color-picker" value="#0d0e10">
+                </div>
+                <div class="slider-row">
+                    <input type="range" id="bg2Percent" min="0" max="100" value="100">
+                    <input type="number" id="bg2Num" class="num-input" min="0" max="100" value="100">
+                    <span style="font-size:12px; color:#aaa;">% spread</span>
+                </div>
+                <div class="slider-row">
+                    <input type="range" id="bg2Opacity" min="0" max="100" value="100">
+                    <input type="number" id="bg2OpacityNum" class="num-input" min="0" max="100" value="100">
+                    <span style="font-size:12px; color:#aaa;">% opacity</span>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Main Text & Divider Color</label>
+                <div class="color-row">
+                    <input type="text" id="textHex" class="color-hex" value="#ffffff">
+                    <input type="color" id="textPicker" class="color-picker" value="#ffffff">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Accent Color (™ Symbol)</label>
+                <div class="color-row">
+                    <input type="text" id="accentHex" class="color-hex" value="#F58025">
+                    <input type="color" id="accentPicker" class="color-picker" value="#F58025">
+                </div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <div class="btn btn-upload">
+                📸 1. Upload Orange Logo
+                <input type="file" id="logoUpload" accept="image/*" />
+            </div>
+            <button class="btn btn-generate" id="generateBtn">✨ 2. Generate Picture</button>
+        </div>
+    </div>
+
+    <!-- The Image Canvas -->
+    <div class="canvas-container">
+        <!-- The Scaler Wrapper prevents bugs when expanding/shrinking for screenshots -->
+        <div class="canvas-scaler" id="canvasScaler">
+            <div class="logo-canvas" id="captureTarget">
+                
+                <!-- Layer 1: Watermark -->
+                <img id="watermarkImg" class="watermark-img" alt="bg">
+                
+                <!-- Layer 2: Directional Lighting -->
+                <div id="lightOverlay" class="light-overlay"></div>
+
+                <!-- Layer 3: Main Content -->
+                <div class="content-wrapper" id="contentWrapper">
+                    <div class="ieee-lockup">
+                        <div class="logo-bug-wrapper">
+                            <div class="icon-container" id="iconBox">
+                                <span id="uploadHint">Upload Image</span>
+                                <img id="displayLogo" src="" alt="CS Logo">
+                            </div>
+                            <span class="tm" id="tmSymbol">™</span>
+                        </div>
+
+                        <div class="divider-line" id="dividerLine"></div>
+                        
+                        <div class="text-container" id="mainTextGroup">
+                            <div class="text-ieee">IEEE</div>
+                            <div class="text-cs">
+                                COMPUTER<br>SOCIETY
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chapter-name" id="chapterNameDisplay">
+                        <span id="uniDisplay">Al-Ahliyya Amman University</span> <br> <span id="chapDisplay">Student Chapter</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOADING OVERLAY -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loader"></div>
+        <div style="font-weight: 600; font-size: 18px;">Rendering High-Res Image...</div>
+    </div>
+
+    <!-- MODAL POPUP FOR SAVING IMAGE -->
+    <div id="resultModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-instructions">Your Logo is Ready!</div>
+            <div class="modal-subtext">Tap the green button below to save it directly to your phone.</div>
+            
+            <img id="finalResultImage" src="" alt="Final Logo">
+            
+            <button class="btn btn-success" id="directDownloadBtn">📥 Share / Save Image</button>
+            <button class="close-modal-btn" id="closeModalBtn">Go Back to Edit</button>
+        </div>
+    </div>
+
+    <script>
+        // 1. WATERMARK DICTIONARY (Stored as Base64 SVGs)
+        const watermarkPatterns = {
+            tech: '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><defs><pattern id="t" x="0" y="0" width="220" height="220" patternUnits="userSpaceOnUse"><g stroke="#ffffff" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M 40 40 C 40 25, 60 25, 60 40 V 60 C 60 75, 40 75, 40 60 Z" /><line x1="50" y1="40" x2="50" y2="50" /><rect x="140" y="30" width="40" height="30" rx="3" /><line x1="150" y1="65" x2="170" y2="65" /><line x1="160" y1="60" x2="160" y2="65" /><path d="M 30 140 L 15 155 L 30 170" /><path d="M 60 140 L 75 155 L 60 170" /><line x1="55" y1="135" x2="35" y2="175" /><rect x="145" y="145" width="30" height="30" rx="2" /><rect x="150" y="150" width="20" height="20" /><circle cx="100" cy="100" r="4" /><circle cx="120" cy="80" r="4" /><circle cx="80" cy="120" r="4" /><line x1="100" y1="100" x2="120" y2="80" /><line x1="100" y1="100" x2="80" y2="120" /></g></pattern></defs><rect x="0" y="0" width="600" height="600" fill="url(#t)" /></svg>',
+            grid: '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600"><defs><pattern id="g" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#ffffff" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(#g)"/></svg>',
+            dots: '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600"><defs><pattern id="d" width="30" height="30" patternUnits="userSpaceOnUse"><circle cx="15" cy="15" r="1.5" fill="#ffffff"/></pattern></defs><rect width="100%" height="100%" fill="url(#d)"/></svg>',
+            none: '' // Will just hide it
+        };
+
+        // Base Setup
+        const watermarkImg = document.getElementById('watermarkImg');
+        const watermarkStyleSelect = document.getElementById('watermarkStyle');
+        
+        function updateWatermarkStyle() {
+            const style = watermarkStyleSelect.value;
+            if (style === 'none') {
+                watermarkImg.style.display = 'none';
+            } else {
+                watermarkImg.style.display = 'block';
+                watermarkImg.src = "data:image/svg+xml;base64," + btoa(watermarkPatterns[style]);
+            }
+        }
+        watermarkStyleSelect.addEventListener('change', updateWatermarkStyle);
+        updateWatermarkStyle(); // init
+
+        // --- Helper for syncing Range Slider with Number Input ---
+        function setupRangeNumSync(rangeId, numId, updateFunc) {
+            const rangeEl = document.getElementById(rangeId);
+            const numEl = document.getElementById(numId);
+            rangeEl.addEventListener('input', (e) => { numEl.value = e.target.value; updateFunc(); });
+            numEl.addEventListener('input', (e) => {
+                let val = parseFloat(e.target.value);
+                const min = parseFloat(numEl.min);
+                const max = parseFloat(numEl.max);
+                if(val < min) val = min;
+                if(val > max) val = max;
+                rangeEl.value = val;
+                updateFunc();
+            });
+        }
+
+        // --- Color Sync Helper ---
+        function setupColorSync(hexInputId, pickerInputId, updateFunc) {
+            const hexIn = document.getElementById(hexInputId);
+            const pickerIn = document.getElementById(pickerInputId);
+            hexIn.addEventListener('input', (e) => {
+                let val = e.target.value;
+                if(val.startsWith('#') && (val.length === 4 || val.length === 7)) { pickerIn.value = val; updateFunc(); }
+            });
+            pickerIn.addEventListener('input', (e) => { hexIn.value = e.target.value; updateFunc(); });
+        }
+
+        // --- Hex to RGBA Converter ---
+        function hexToRgba(hex, opacityPercent) {
+            hex = hex.replace('#', '');
+            if (hex.length === 3) hex = hex.split('').map(char => char + char).join('');
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            return `rgba(${r}, ${g}, ${b}, ${opacityPercent / 100})`;
+        }
+
+        // 2. LIVE EDITING LOGIC
+
+        // --- Text Edit ---
+        const uniInput = document.getElementById('uniInput');
+        const chapInput = document.getElementById('chapInput');
+        const uniDisplay = document.getElementById('uniDisplay');
+        const chapDisplay = document.getElementById('chapDisplay');
+        uniInput.addEventListener('input', (e) => uniDisplay.innerText = e.target.value);
+        chapInput.addEventListener('input', (e) => chapDisplay.innerText = e.target.value);
+
+        // --- Font Size Adjustment ---
+        const contentWrapper = document.getElementById('contentWrapper');
+        function updateFontSizes() {
+            contentWrapper.style.setProperty('--main-scale', document.getElementById('mainTextSizeRange').value);
+            contentWrapper.style.setProperty('--chap-scale', document.getElementById('chapTextSizeRange').value);
+        }
+        setupRangeNumSync('mainTextSizeRange', 'mainTextSizeNum', updateFontSizes);
+        setupRangeNumSync('chapTextSizeRange', 'chapTextSizeNum', updateFontSizes);
+
+        // --- TM Position Offset ---
+        function updateTmPosition() {
+            document.getElementById('tmSymbol').style.right = document.getElementById('tmOffsetRange').value + 'px';
+        }
+        setupRangeNumSync('tmOffsetRange', 'tmOffsetNum', updateTmPosition);
+
+        // --- Watermark Opacity ---
+        function updateWatermarkOpacity() {
+            watermarkImg.style.opacity = document.getElementById('watermarkRange').value / 100;
+        }
+        setupRangeNumSync('watermarkRange', 'watermarkNum', updateWatermarkOpacity);
+
+        // --- Directional Lighting Logic ---
+        const lightOverlay = document.getElementById('lightOverlay');
+        const lightDirSelect = document.getElementById('lightDirection');
+
+        function updateLighting() {
+            const dir = lightDirSelect.value;
+            if (dir === 'none') {
+                lightOverlay.style.background = 'none';
+                return;
+            }
+            const hex = document.getElementById('lightHex').value;
+            const op = document.getElementById('lightOpacityRange').value;
+            const colorRgba = hexToRgba(hex, op);
+
+            let pos = '50% 50%'; // Default Center
+            if(dir === 'top-left') pos = '0% 0%';
+            else if(dir === 'top') pos = '50% 0%';
+            else if(dir === 'top-right') pos = '100% 0%';
+            else if(dir === 'left') pos = '0% 50%';
+            else if(dir === 'right') pos = '100% 50%';
+            else if(dir === 'bottom-left') pos = '0% 100%';
+            else if(dir === 'bottom') pos = '50% 100%';
+            else if(dir === 'bottom-right') pos = '100% 100%';
+
+            lightOverlay.style.background = `radial-gradient(circle at ${pos}, ${colorRgba} 0%, transparent 65%)`;
+        }
+        lightDirSelect.addEventListener('change', updateLighting);
+        setupColorSync('lightHex', 'lightPicker', updateLighting);
+        setupRangeNumSync('lightOpacityRange', 'lightOpacityNum', updateLighting);
+
+        // --- Apply Background Gradient & Spread & Opacity Percentages ---
+        function updateBackground() {
+            const c1 = hexToRgba(document.getElementById('bg1Hex').value, document.getElementById('bg1Opacity').value);
+            const c2 = hexToRgba(document.getElementById('bg2Hex').value, document.getElementById('bg2Opacity').value);
+            const p1 = document.getElementById('bg1Percent').value;
+            const p2 = document.getElementById('bg2Percent').value;
+            document.getElementById('captureTarget').style.backgroundImage = `radial-gradient(circle at center, ${c1} ${p1}%, ${c2} ${p2}%)`;
+        }
+        setupColorSync('bg1Hex', 'bg1Picker', updateBackground);
+        setupColorSync('bg2Hex', 'bg2Picker', updateBackground);
+        setupRangeNumSync('bg1Percent', 'bg1Num', updateBackground);
+        setupRangeNumSync('bg2Percent', 'bg2Num', updateBackground);
+        setupRangeNumSync('bg1Opacity', 'bg1OpacityNum', updateBackground);
+        setupRangeNumSync('bg2Opacity', 'bg2OpacityNum', updateBackground);
+
+        // --- Apply Text Color ---
+        function updateTextColor() {
+            const color = document.getElementById('textHex').value;
+            document.getElementById('mainTextGroup').style.color = color;
+            document.getElementById('chapterNameDisplay').style.color = color;
+            document.getElementById('dividerLine').style.backgroundColor = color;
+        }
+        setupColorSync('textHex', 'textPicker', updateTextColor);
+
+        // --- Apply Accent Color ---
+        function updateAccentColor() {
+            document.getElementById('tmSymbol').style.color = document.getElementById('accentHex').value;
+        }
+        setupColorSync('accentHex', 'accentPicker', updateAccentColor);
+
+        // 3. Handle Logo Upload
+        const logoUpload = document.getElementById('logoUpload');
+        const displayLogo = document.getElementById('displayLogo');
+        const uploadHint = document.getElementById('uploadHint');
+        const iconBox = document.getElementById('iconBox');
+
+        logoUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    displayLogo.src = event.target.result;
+                    displayLogo.style.display = 'block';
+                    uploadHint.style.display = 'none';
+                    iconBox.style.border = 'none';
+                    iconBox.style.backgroundColor = 'transparent';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // 4. GENERATION LOGIC WITH "SCALER WRAPPER" FIX
+        const generateBtn = document.getElementById('generateBtn');
+        const canvasScaler = document.getElementById('canvasScaler');
+        const captureTarget = document.getElementById('captureTarget');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const resultModal = document.getElementById('resultModal');
+        const finalResultImage = document.getElementById('finalResultImage');
+        const directDownloadBtn = document.getElementById('directDownloadBtn');
+
+        let currentDataUrl = ""; 
+
+        generateBtn.addEventListener('click', () => {
+            if(displayLogo.style.display !== 'block') {
+                alert("Please upload the logo image first using the blue button!");
+                return;
+            }
+
+            loadingOverlay.style.display = 'flex';
+            
+            // To prevent rendering glitches in Safari, we disable the responsive scaler wrapper
+            // temporarily instead of ripping the element out of the document using position fixed.
+            canvasScaler.style.transform = 'scale(1)';
+            canvasScaler.style.marginTop = '50px';
+            canvasScaler.style.marginBottom = '50px';
+
+            setTimeout(() => {
+                html2canvas(captureTarget, {
+                    scale: 2, 
+                    backgroundColor: '#ffffff', 
+                    useCORS: true,
+                    allowTaint: true
+                }).then(canvas => {
+                    // Revert the wrapper scaling instantly
+                    canvasScaler.style.transform = '';
+                    canvasScaler.style.marginTop = '';
+                    canvasScaler.style.marginBottom = '';
+
+                    currentDataUrl = canvas.toDataURL('image/png');
+                    finalResultImage.src = currentDataUrl;
+                    
+                    loadingOverlay.style.display = 'none';
+                    resultModal.style.display = 'flex';
+                }).catch(err => {
+                    canvasScaler.style.transform = '';
+                    canvasScaler.style.marginTop = '';
+                    canvasScaler.style.marginBottom = '';
+                    loadingOverlay.style.display = 'none';
+                    alert("Capture failed. Please try again.");
+                });
+            }, 400); // 400ms delay ensures layout reflow finishes perfectly
+        });
+
+        // Download / Share Logic
+        directDownloadBtn.addEventListener('click', async () => {
+            if(!currentDataUrl) return;
+
+            if (navigator.share) {
+                try {
+                    const response = await fetch(currentDataUrl);
+                    const blob = await response.blob();
+                    const file = new File([blob], 'Custom-IEEE-Logo.png', { type: 'image/png' });
+                    
+                    await navigator.share({
+                        title: 'IEEE Chapter Logo',
+                        files: [file]
+                    });
+                    return; 
+                } catch (err) {
+                    console.log("Share API blocked or cancelled", err);
+                }
+            }
+            
+            const link = document.createElement('a');
+            link.download = 'Custom-IEEE-Logo.png';
+            link.href = currentDataUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // Close Modal Fix
+        document.getElementById('closeModalBtn').addEventListener('click', () => {
+            resultModal.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
+
+
